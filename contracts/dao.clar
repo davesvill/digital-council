@@ -64,7 +64,6 @@
     (and 
         (>= (len subject) MIN_SUBJECT_LENGTH)
         (<= (len subject) MAX_SUBJECT_LENGTH)
-        (is-some (string-ascii? subject))
     )
 )
 
@@ -72,7 +71,6 @@
     (and 
         (>= (len brief) MIN_BRIEF_LENGTH)
         (<= (len brief) MAX_BRIEF_LENGTH)
-        (is-some (string-ascii? brief))
     )
 )
 
