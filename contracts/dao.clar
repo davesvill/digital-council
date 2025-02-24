@@ -14,12 +14,19 @@
 (define-constant ERR-LOW-PARTICIPATION (err u108))
 (define-constant ERR-INVALID-MOTION (err u109))
 (define-constant ERR-MOTION-IN-PROGRESS (err u110))
+(define-constant ERR-INVALID-SUBJECT (err u111))
+(define-constant ERR-INVALID-GRACE-PERIOD (err u112))
 
 ;; Configuration
 (define-constant DELIBERATION-PERIOD u144) ;; ~24 hours in blocks
 (define-constant MIN-MOTION-THRESHOLD u100000) ;; Minimum tokens needed to create motion
 (define-constant PARTICIPATION-THRESHOLD u300000) ;; Minimum total votes needed
 (define-constant MIN_BRIEF_LENGTH u10)
+(define-constant MAX_BRIEF_LENGTH u500)
+(define-constant MIN_SUBJECT_LENGTH u4)
+(define-constant MAX_SUBJECT_LENGTH u100)
+(define-constant MIN_GRACE_PERIOD u12) ;; Minimum 2 hours in blocks
+(define-constant MAX_GRACE_PERIOD u1440) ;; Maximum ~10 days in blocks
 (define-constant MOTION_INTERVAL u72) ;; ~12 hours cooldown between motions
 
 ;; Data Variables
@@ -50,6 +57,30 @@
 (define-map ballots 
     {motion-id: uint, member: principal} 
     {stake-amount: uint, in-favor: bool}
+)
+
+;; Private validation functions
+(define-private (validate-subject (subject (string-ascii 100)))
+    (and 
+        (>= (len subject) MIN_SUBJECT_LENGTH)
+        (<= (len subject) MAX_SUBJECT_LENGTH)
+        (is-some (string-ascii? subject))
+    )
+)
+
+(define-private (validate-brief (brief (string-ascii 500)))
+    (and 
+        (>= (len brief) MIN_BRIEF_LENGTH)
+        (<= (len brief) MAX_BRIEF_LENGTH)
+        (is-some (string-ascii? brief))
+    )
+)
+
+(define-private (validate-grace-period (grace-period uint))
+    (and 
+        (>= grace-period MIN_GRACE_PERIOD)
+        (<= grace-period MAX_GRACE_PERIOD)
+    )
 )
 
 ;; Authorization check
@@ -83,11 +114,13 @@
     )
 )
 
-;; Create new motion with additional validation
+;; Create new motion with enhanced validation
 (define-public (propose-motion (subject (string-ascii 100)) (brief (string-ascii 500)) (grace-period uint))
     (begin
         (asserts! (not (var-get system-halted)) ERR-UNAUTHORIZED)
-        (asserts! (>= (len brief) MIN_BRIEF_LENGTH) ERR-INVALID-MOTION)
+        (asserts! (validate-subject subject) ERR-INVALID-SUBJECT)
+        (asserts! (validate-brief brief) ERR-INVALID-MOTION)
+        (asserts! (validate-grace-period grace-period) ERR-INVALID-GRACE-PERIOD)
         (asserts! (>= (get-stake tx-sender) MIN-MOTION-THRESHOLD) ERR-UNAUTHORIZED)
         (asserts! (>= (- block-height (var-get last-motion-time)) MOTION_INTERVAL) ERR-MOTION-IN-PROGRESS)
         
